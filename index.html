@@ -2,94 +2,190 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<title>Rebaixado do seu jeito</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fivem - rebaixado seu carro</title>
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
 <style>
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0f172a;color:#e5e7eb}
-  .container{max-width:800px;margin:40px auto;padding:20px}
-  .card{background:#020617;border-radius:10px;padding:20px}
-  h1{text-align:center}
-  label{display:block;margin-top:12px}
-  input,button{width:100%;margin-top:6px}
-  button{padding:12px;background:#6366f1;border:0;border-radius:8px;color:#fff;font-size:16px;cursor:pointer}
+:root{
+  --bg:#050814;
+  --card:#0b1025;
+  --neon:#22d3ee;
+  --pink:#ec4899;
+  --green:#22c55e;
+  --text:#e5e7eb;
+}
+
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:radial-gradient(circle at top,var(--card),var(--bg));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--text);
+}
+
+.box{
+  width:100%;
+  max-width:520px;
+  background:linear-gradient(180deg,#0b1025,#020617);
+  border-radius:20px;
+  padding:30px;
+  box-shadow:0 0 40px rgba(34,211,238,.15);
+}
+
+h1{
+  text-align:center;
+  margin-bottom:20px;
+  color:var(--neon);
+  letter-spacing:1px;
+}
+
+input[type=file]{
+  width:100%;
+  margin-bottom:15px;
+  padding:10px;
+  background:#020617;
+  border:1px solid #1e293b;
+  border-radius:8px;
+  color:#fff;
+}
+
+audio{
+  width:100%;
+  margin:15px 0;
+}
+
+.control{
+  margin:18px 0;
+}
+
+.control label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:6px;
+  font-size:14px;
+}
+
+input[type=range]{
+  width:100%;
+}
+
+button{
+  width:100%;
+  margin-top:20px;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,var(--pink),var(--neon));
+  color:#000;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.footer{
+  text-align:center;
+  margin-top:15px;
+  font-size:12px;
+  color:#94a3b8;
+}
 </style>
 </head>
+
 <body>
-<div class="container">
-  <div class="card">
-    <h1>Editor MP3 (Grave Real)</h1>
 
-    <input type="file" id="fileInput" accept="audio/mp3">
+<div class="box">
+  <h1>🔊 GRAVE BOOST PRO</h1>
 
-    <audio id="audio" controls></audio>
+  <input type="file" id="fileInput" accept="audio/*">
+  <audio id="audio" controls></audio>
 
-    <label>Grave (Bass)</label>
-    <input type="range" id="bass" min="-30" max="30" value="0">
-
-    <label>Volume Final</label>
-    <input type="range" id="volume" min="0.5" max="2" step="0.01" value="1">
-
-    <button id="exportBtn">Exportar MP3 com Grave</button>
-
-    <p id="status"></p>
+  <div class="control">
+    <label>🔊 Volume <span id="volVal">100%</span></label>
+    <input type="range" min="0" max="200" value="100" id="volume">
   </div>
+
+  <div class="control">
+    <label>🔉 Grave (Bass) <span id="bassVal">0</span></label>
+    <input type="range" min="-30" max="30" value="0" id="bass">
+  </div>
+
+  <div class="control">
+    <label>🔔 Agudo <span id="trebleVal">0</span></label>
+    <input type="range" min="-30" max="30" value="0" id="treble">
+  </div>
+
+  <button onclick="ativarSom()">ATIVAR SOM</button>
+
+  <div class="footer">Estilo automotivo • Grave forte • Qualidade real</div>
 </div>
 
 <script>
-const { FFmpeg } = FFmpegWASM;
-const ffmpeg = new FFmpeg();
+const audio = document.getElementById("audio");
+const fileInput = document.getElementById("fileInput");
 
-const fileInput = document.getElementById('fileInput');
-const audio = document.getElementById('audio');
-const bass = document.getElementById('bass');
-const volume = document.getElementById('volume');
-const exportBtn = document.getElementById('exportBtn');
-const status = document.getElementById('status');
+const volumeSlider = document.getElementById("volume");
+const bassSlider = document.getElementById("bass");
+const trebleSlider = document.getElementById("treble");
 
-let file;
+const volVal = document.getElementById("volVal");
+const bassVal = document.getElementById("bassVal");
+const trebleVal = document.getElementById("trebleVal");
 
-fileInput.onchange = () => {
-  file = fileInput.files[0];
-  if(!file) return;
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const ctx = new AudioContext();
+
+const source = ctx.createMediaElementSource(audio);
+
+const bass = ctx.createBiquadFilter();
+bass.type = "lowshelf";
+bass.frequency.value = 90;
+
+const treble = ctx.createBiquadFilter();
+treble.type = "highshelf";
+treble.frequency.value = 4000;
+
+const gain = ctx.createGain();
+
+source
+  .connect(bass)
+  .connect(treble)
+  .connect(gain)
+  .connect(ctx.destination);
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
   audio.src = URL.createObjectURL(file);
   audio.load();
+});
+
+volumeSlider.oninput = () => {
+  gain.gain.value = volumeSlider.value / 100;
+  volVal.textContent = volumeSlider.value + "%";
 };
 
-exportBtn.onclick = async () => {
-  if(!file){ alert('Envie um MP3 primeiro'); return; }
+bassSlider.oninput = () => {
+  bass.gain.value = bassSlider.value;
+  bassVal.textContent = bassSlider.value;
+};
 
-  const nome = prompt('Nome do MP3 (sem .mp3)');
-  if(!nome) return;
+trebleSlider.oninput = () => {
+  treble.gain.value = trebleSlider.value;
+  trebleVal.textContent = trebleSlider.value;
+};
 
-  status.innerText = 'Carregando FFmpeg (pode demorar na primeira vez)...';
-
-  if(!ffmpeg.loaded){
-    await ffmpeg.load({
-      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js'
-    });
+function ativarSom(){
+  if(ctx.state === "suspended"){
+    ctx.resume();
   }
-
-  status.innerText = 'Processando áudio...';
-
-  const buffer = await file.arrayBuffer();
-  await ffmpeg.writeFile('input.mp3', new Uint8Array(buffer));
-
-  const filtro = `bass=g=${bass.value},volume=${volume.value}`;
-
-  await ffmpeg.exec(['-i','input.mp3','-af',filtro,'output.mp3']);
-
-  const data = await ffmpeg.readFile('output.mp3');
-  const blob = new Blob([data.buffer], { type:'audio/mp3' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nome + '.mp3';
-  a.click();
-
-  status.innerText = 'MP3 exportado com sucesso.';
-};
+  audio.play();
+}
 </script>
+
 </body>
 </html>
